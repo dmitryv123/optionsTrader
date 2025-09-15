@@ -1,0 +1,44 @@
+# --- Python / Django ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.log
+db.sqlite3
+media/
+staticfiles/
+
+# Virtual envs
+.venv/
+venv/
+
+# Env / secrets
+.env
+.env.*
+
+# Coverage / testing
+.coverage
+htmlcov/
+.tox/
+pytest_cache/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Node / UI (future-proof)
+ui/node_modules/
+ui/.next/
+ui/.turbo/
+ui/.cache/
+ui/.eslintcache
+ui/.env.local
+ui/.env.*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Docker (if used later)
+**/.dockerignore
+docker-compose.override.yml
