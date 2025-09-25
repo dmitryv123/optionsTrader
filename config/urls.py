@@ -16,7 +16,13 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from strategies.views import recommendations_today
+from ops.views import health  # if you already added health
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/health/', health, name='health'),
+    path('api/recommendations/today/', recommendations_today, name='recs_today'),
 ]
+

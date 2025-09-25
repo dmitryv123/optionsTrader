@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     'strategies',
     'backtests',
     'accounts',
+    'ops',
+
 ]
 
 MIDDLEWARE = [
