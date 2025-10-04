@@ -1,0 +1,18 @@
+pgrep -fl Gateway               # should show 1 (or 2) running process(es)
+# whichever port scheme you chose:
+lsof -nP -iTCP:4001 -sTCP:LISTEN  # live SSL
+lsof -nP -iTCP:7496 -sTCP:LISTEN  # live non-SSL
+
+/Users/dmitry_v/Library/LaunchAgents:
+
+com.ibkr.gateway.health.plist
+com.ibkr.gateway.paper.plist
+com.ibkr.gateway.live.plist
+
+launchctl bootout  gui/$(id -u)/com.ibkr.gateway.live  2>/dev/null || true  # terminate service
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ibkr.gateway.live.plist  #load the service
+
+launchctl list | grep -E 'com\.ibkr\.gateway\.health|ibkr'  # list running services + check specific one health
+
+
+

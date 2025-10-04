@@ -100,6 +100,8 @@ class Command(BaseCommand):
         parser.add_argument("--client-id", type=int, default=int(os.getenv("IB_CLIENT_ID", "42")))
         parser.add_argument("--accounts", default="", help="Comma-separated list of IBKR account codes to sync (e.g., U12345,DU1234567). If empty, sync all linked live/paper accounts in DB.")
         parser.add_argument("--timeout", type=float, default=10.0, help="Network timeout in seconds")
+        parser.add_argument("--skip-orders", action="store_true",
+                            help="Skip fetching orders/executions (useful in TWS/GW Read-Only mode)")
 
     def handle(self, *args, **opts):
         host = opts["host"]
@@ -131,8 +133,11 @@ class Command(BaseCommand):
             return
 
         # 3) Preload all Trades once (contains orders+fills)
-        trades = ib.trades()  # list[Trade]
-        open_orders = ib.openOrders()  # sometimes useful for status
+        trades = []
+        open_orders = []
+        if not opts["skip_orders"]:
+            trades = ib.trades()
+            open_orders = ib.openOrders()
 
         # 4) Loop per broker account
         for ba in broker_accounts:
@@ -200,84 +205,85 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.WARNING(f"  Positions fetch failed: {e}"))
 
             # 4.3 Orders & Executions (from trades())
-            try:
-                # Filter trades for this account
-                acct_trades = [t for t in trades if getattr(t.order, "account", None) == ba.account_code]
+            if not opts["skip_orders"]:
+                try:
+                    # Filter trades for this account
+                    acct_trades = [t for t in trades if getattr(t.order, "account", None) == ba.account_code]
 
-                # First pass: upsert Orders
-                for t in acct_trades:
-                    c = t.contract
-                    inst = get_or_create_instrument_from_contract(c)
-                    ic = upsert_ibkr_contract(c, inst)
-                    o = t.order
+                    # First pass: upsert Orders
+                    for t in acct_trades:
+                        c = t.contract
+                        inst = get_or_create_instrument_from_contract(c)
+                        ic = upsert_ibkr_contract(c, inst)
+                        o = t.order
 
-                    ord_obj, created = Order.objects.get_or_create(
-                        client=ba.client,
-                        broker_account=ba,
-                        ibkr_con=ic,
-                        ibkr_order_id=o.orderId,
-                        defaults={
-                            "parent_ibkr_order_id": getattr(o, "parentId", None),
-                            "side": "BUY" if getattr(o, "action", "BUY").upper().startswith("B") else "SELL",
-                            "order_type": getattr(o, "orderType", "") or "",
-                            "limit_price": decimal_safe(getattr(o, "lmtPrice", None)),
-                            "aux_price": decimal_safe(getattr(o, "auxPrice", None)),
-                            "tif": getattr(o, "tif", "") or "",
-                            "status": getattr(t.orderStatus, "status", "") or "",
-                            "raw": {
-                                "order": util.treeToJson(o),
-                                "status": util.treeToJson(t.orderStatus),
-                            },
-                            "created_ts": timezone.now(),
-                            "updated_ts": timezone.now(),
-                        }
-                    )
-                    if not created:
-                        # update changing fields
-                        changed = False
-                        status = getattr(t.orderStatus, "status", "") or ""
-                        if ord_obj.status != status:
-                            ord_obj.status = status; changed = True
-                        ord_obj.updated_ts = timezone.now(); changed = True
-                        if changed:
-                            ord_obj.save(update_fields=["status", "updated_ts"])
-
-                # Second pass: upsert Executions (fills)
-                exec_count = 0
-                for t in acct_trades:
-                    for f in t.fills:
-                        e = f.execution  # has execId, time, cumQty, price etc.
-                        # Find the Order we inserted above
-                        # Note: some rare cases might not match due to parent/child splits.
-                        try:
-                            order_obj = Order.objects.get(
-                                broker_account=ba, ibkr_order_id=t.order.orderId
-                            )
-                        except Order.DoesNotExist:
-                            continue
-
-                        exec_obj, created = Execution.objects.get_or_create(
+                        ord_obj, created = Order.objects.get_or_create(
                             client=ba.client,
-                            order=order_obj,
-                            ibkr_exec_id=e.execId,
+                            broker_account=ba,
+                            ibkr_con=ic,
+                            ibkr_order_id=o.orderId,
                             defaults={
-                                "fill_ts": e.time.replace(tzinfo=timezone.utc) if hasattr(e.time, "tzinfo") else timezone.now(),
-                                "qty": decimal_safe(e.shares),
-                                "price": decimal_safe(e.price),
-                                "fee": decimal_safe(getattr(f, "commissionReport", None) and getattr(f.commissionReport, "commission", None)),
-                                "venue": getattr(e, "exchange", "") or "",
+                                "parent_ibkr_order_id": getattr(o, "parentId", None),
+                                "side": "BUY" if getattr(o, "action", "BUY").upper().startswith("B") else "SELL",
+                                "order_type": getattr(o, "orderType", "") or "",
+                                "limit_price": decimal_safe(getattr(o, "lmtPrice", None)),
+                                "aux_price": decimal_safe(getattr(o, "auxPrice", None)),
+                                "tif": getattr(o, "tif", "") or "",
+                                "status": getattr(t.orderStatus, "status", "") or "",
                                 "raw": {
-                                    "execution": util.treeToJson(e),
-                                    "commission": util.treeToJson(getattr(f, "commissionReport", None)),
-                                }
+                                    "order": util.treeToJson(o),
+                                    "status": util.treeToJson(t.orderStatus),
+                                },
+                                "created_ts": timezone.now(),
+                                "updated_ts": timezone.now(),
                             }
                         )
-                        if created:
-                            exec_count += 1
-                self.stdout.write(self.style.SUCCESS(f"  Orders/Executions upserted (fills: {exec_count})"))
+                        if not created:
+                            # update changing fields
+                            changed = False
+                            status = getattr(t.orderStatus, "status", "") or ""
+                            if ord_obj.status != status:
+                                ord_obj.status = status; changed = True
+                            ord_obj.updated_ts = timezone.now(); changed = True
+                            if changed:
+                                ord_obj.save(update_fields=["status", "updated_ts"])
 
-            except Exception as e:
-                self.stdout.write(self.style.WARNING(f"  Orders/Executions fetch failed: {e}"))
+                    # Second pass: upsert Executions (fills)
+                    exec_count = 0
+                    for t in acct_trades:
+                        for f in t.fills:
+                            e = f.execution  # has execId, time, cumQty, price etc.
+                            # Find the Order we inserted above
+                            # Note: some rare cases might not match due to parent/child splits.
+                            try:
+                                order_obj = Order.objects.get(
+                                    broker_account=ba, ibkr_order_id=t.order.orderId
+                                )
+                            except Order.DoesNotExist:
+                                continue
+
+                            exec_obj, created = Execution.objects.get_or_create(
+                                client=ba.client,
+                                order=order_obj,
+                                ibkr_exec_id=e.execId,
+                                defaults={
+                                    "fill_ts": e.time.replace(tzinfo=timezone.utc) if hasattr(e.time, "tzinfo") else timezone.now(),
+                                    "qty": decimal_safe(e.shares),
+                                    "price": decimal_safe(e.price),
+                                    "fee": decimal_safe(getattr(f, "commissionReport", None) and getattr(f.commissionReport, "commission", None)),
+                                    "venue": getattr(e, "exchange", "") or "",
+                                    "raw": {
+                                        "execution": util.treeToJson(e),
+                                        "commission": util.treeToJson(getattr(f, "commissionReport", None)),
+                                    }
+                                }
+                            )
+                            if created:
+                                exec_count += 1
+                            self.stdout.write(self.style.SUCCESS(f"  Orders/Executions upserted (fills: {exec_count})"))
+
+                except Exception as e:
+                    self.stdout.write(self.style.WARNING(f"  Orders/Executions fetch failed: {e}"))
 
         ib.disconnect()
         self.stdout.write(self.style.SUCCESS("✅ IBKR mirror complete."))
