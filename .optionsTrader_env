@@ -1,0 +1,9 @@
+# ~/.optionsTrader_env
+
+export SMTP_HOST="smtp.mail.yahoo.com"
+export SMTP_PORT="587"
+export SMTP_USER="dmitry_v123@yahoo.ca"
+export SMTP_PASS="auzssyxszdzsxrre"
+export FROM_EMAIL="dmitry_v123@yahoo.ca"
+export TO_EMAIL="dmitry_v123@yahoo.ca"
+

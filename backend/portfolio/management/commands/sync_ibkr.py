@@ -14,6 +14,7 @@ from portfolio.models import (
     Portfolio, Instrument, IbkrContract, Position, Order, Execution
 )
 
+
 def decimal_safe(x) -> Decimal:
     try:
         if x is None: return Decimal("0")
@@ -21,6 +22,7 @@ def decimal_safe(x) -> Decimal:
         return Decimal(str(x))
     except Exception:
         return Decimal("0")
+
 
 def asset_type_from_secType(secType: str) -> str:
     secType = (secType or "").upper()
@@ -32,6 +34,7 @@ def asset_type_from_secType(secType: str) -> str:
         "CASH": "fx",
         "CRYPTO": "crypto",
     }.get(secType, "equity")
+
 
 def get_or_create_instrument_from_contract(c) -> Instrument:
     """
@@ -55,6 +58,7 @@ def get_or_create_instrument_from_contract(c) -> Instrument:
         inst.save(update_fields=["exchange"])
     return inst
 
+
 def upsert_ibkr_contract(c, instrument: Instrument) -> IbkrContract:
     ic, created = IbkrContract.objects.get_or_create(
         con_id=c.conId,
@@ -77,6 +81,7 @@ def upsert_ibkr_contract(c, instrument: Instrument) -> IbkrContract:
         ic.save(update_fields=["instrument"])
     return ic
 
+
 def ensure_mirror_portfolio(broker_account: BrokerAccount) -> Portfolio:
     """
     Ensure each BrokerAccount has a default portfolio to attach mirrored positions/orders.
@@ -98,10 +103,14 @@ class Command(BaseCommand):
         parser.add_argument("--host", default=os.getenv("IB_HOST", "127.0.0.1"))
         parser.add_argument("--port", type=int, default=int(os.getenv("IB_PORT", "7497")))
         parser.add_argument("--client-id", type=int, default=int(os.getenv("IB_CLIENT_ID", "42")))
-        parser.add_argument("--accounts", default="", help="Comma-separated list of IBKR account codes to sync (e.g., U12345,DU1234567). If empty, sync all linked live/paper accounts in DB.")
+        parser.add_argument("--accounts", default="",
+                            help="Comma-separated list of IBKR account codes to sync (e.g., U12345,DU1234567). If empty, sync all linked live/paper accounts in DB.")
         parser.add_argument("--timeout", type=float, default=10.0, help="Network timeout in seconds")
         parser.add_argument("--skip-orders", action="store_true",
                             help="Skip fetching orders/executions (useful in TWS/GW Read-Only mode)")
+        parser.add_argument("--source", default="manual", help=("Tag stored in AccountSnapshot.extras['source'] "
+                                                                "(e.g., scheduled-evening, scheduled-morning, manual, debug)."), )
+        parser.add_argument("--readonly", action="store_true", help="Connect to IB API with readonly=True (suppresses order streams)")
 
     def handle(self, *args, **opts):
         host = opts["host"]
@@ -113,7 +122,7 @@ class Command(BaseCommand):
         ib = IB()
         self.stdout.write(self.style.NOTICE(f"Connecting to IBKR at {host}:{port} clientId={clientId}..."))
         try:
-            ib.connect(host, port, clientId=clientId, timeout=opts["timeout"])
+            ib.connect(host, port, clientId=clientId, timeout=opts["timeout"], readonly=opts["readonly"])
         except Exception as e:
             raise CommandError(f"Failed to connect to IBKR: {e}")
 
@@ -163,19 +172,23 @@ class Command(BaseCommand):
                     currency=summary_map.get("Currency", ba.base_currency) or ba.base_currency,
                     cash=decimal_safe(summary_map.get("TotalCashValue")),
                     buying_power=decimal_safe(summary_map.get("BuyingPower")),
-                    maintenance_margin=decimal_safe(summary_map.get("MaintMarginReq") or summary_map.get("FullMaintMarginReq")),
+                    maintenance_margin=decimal_safe(
+                        summary_map.get("MaintMarginReq") or summary_map.get("FullMaintMarginReq")),
                     used_margin=decimal_safe(summary_map.get("InitMarginReq") or summary_map.get("FullInitMarginReq")),
-                    extras={"raw": {k: summary_map.get(k) for k in summary_map.keys()}},
+                    extras={"raw": {k: summary_map.get(k) for k in summary_map.keys()},
+                            "source": opts.get("source", "manual"),
+                            },
                 )
                 AccountSnapshot.objects.create(**snap_kwargs)
                 self.stdout.write(self.style.SUCCESS("  AccountSnapshot inserted"))
             except Exception as e:
-                self.stdout.write(self.style.WARNING(f"  AccountSummary fetch failed ({e}); inserting minimal snapshot"))
+                self.stdout.write(
+                    self.style.WARNING(f"  AccountSummary fetch failed ({e}); inserting minimal snapshot"))
                 AccountSnapshot.objects.create(
                     client=ba.client, broker_account=ba, asof_ts=timezone.now(),
                     currency=ba.base_currency, cash=Decimal("0"), buying_power=Decimal("0"),
                     maintenance_margin=Decimal("0"), used_margin=Decimal("0"),
-                    extras={"note": "summary failed"}
+                    extras={"note": "summary failed", "source": opts.get("source", "manual")}
                 )
 
             # 4.2 Positions
@@ -243,8 +256,10 @@ class Command(BaseCommand):
                             changed = False
                             status = getattr(t.orderStatus, "status", "") or ""
                             if ord_obj.status != status:
-                                ord_obj.status = status; changed = True
-                            ord_obj.updated_ts = timezone.now(); changed = True
+                                ord_obj.status = status;
+                                changed = True
+                            ord_obj.updated_ts = timezone.now();
+                            changed = True
                             if changed:
                                 ord_obj.save(update_fields=["status", "updated_ts"])
 
@@ -267,10 +282,13 @@ class Command(BaseCommand):
                                 order=order_obj,
                                 ibkr_exec_id=e.execId,
                                 defaults={
-                                    "fill_ts": e.time.replace(tzinfo=timezone.utc) if hasattr(e.time, "tzinfo") else timezone.now(),
+                                    "fill_ts": e.time.replace(tzinfo=timezone.utc) if hasattr(e.time,
+                                                                                              "tzinfo") else timezone.now(),
                                     "qty": decimal_safe(e.shares),
                                     "price": decimal_safe(e.price),
-                                    "fee": decimal_safe(getattr(f, "commissionReport", None) and getattr(f.commissionReport, "commission", None)),
+                                    "fee": decimal_safe(
+                                        getattr(f, "commissionReport", None) and getattr(f.commissionReport,
+                                                                                         "commission", None)),
                                     "venue": getattr(e, "exchange", "") or "",
                                     "raw": {
                                         "execution": util.treeToJson(e),

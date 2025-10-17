@@ -1,3 +1,5 @@
+###  Gateway IBKR
+
 pgrep -fl Gateway               # should show 1 (or 2) running process(es)
 # whichever port scheme you chose:
 lsof -nP -iTCP:4001 -sTCP:LISTEN  # live SSL
@@ -8,11 +10,48 @@ lsof -nP -iTCP:7496 -sTCP:LISTEN  # live non-SSL
 com.ibkr.gateway.health.plist
 com.ibkr.gateway.paper.plist
 com.ibkr.gateway.live.plist
-
 launchctl bootout  gui/$(id -u)/com.ibkr.gateway.live  2>/dev/null || true  # terminate service
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.ibkr.gateway.live.plist  #load the service
-
 launchctl list | grep -E 'com\.ibkr\.gateway\.health|ibkr'  # list running services + check specific one health
+
+plutil -lint ~/Library/LaunchAgents/com.optionstrader.mirror.live.am.plist  # Check plist file structure
+
+Logs: /Users/dmitry_v/Library/Logs/ibkr*
+
+###
+
+# Wake up : pmset
+pmset -g sched # scheduled awaiks
+sudo pmset schedule cancelall  # That removes all one-time scheduled events (e.g. pmset schedule wake ...)
+sudo pmset repeat cancel       # clear any repeating events (if you set one with pmset repeat)
+
+Logs: tail -n 80 /var/log/second-wake/second-wake.log   # Check wakeing history
+sudo launchctl kickstart -k system/com.you.secondwake # “As root, restart the system-level LaunchDaemon named com.you.secondwake right now, even if it’s already running.”
+
+###
+
+#  Mirror Live and Paper IBKR accounts
+
+launchctl unload ~/Library/LaunchAgents/com.optionstrader.mirror.live.am.plist
+launchctl load -w ~/Library/LaunchAgents/com.optionstrader.mirror.live.am.plist
+
+launchctl unload ~/Library/LaunchAgents/com.optionstrader.mirror.live.pm.plist
+launchctl load -w ~/Library/LaunchAgents/com.optionstrader.mirror.live.pm.plist
+
+launchctl unload ~/Library/LaunchAgents/com.optionstrader.mirror.paper.am.plist
+launchctl load -w ~/Library/LaunchAgents/com.optionstrader.mirror.paper.am.plist
+
+launchctl unload ~/Library/LaunchAgents/com.optionstrader.mirror.paper.pm.plist
+launchctl load -w ~/Library/LaunchAgents/com.optionstrader.mirror.paper.pm.plist
+
+
+###  Bash
+
+set -euo pipefail
+
+
+
+
 
 
 
