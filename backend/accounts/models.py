@@ -1,4 +1,3 @@
-
 # Create your models here.
 
 from django.conf import settings
@@ -11,12 +10,16 @@ from decimal import Decimal
 # ----- paste the TimeUUIDModel here if not sharing it from a common module -----
 import uuid
 
+
 class TimeUUIDModel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         abstract = True
+
+
 # -------------------------------------------------------------------------------
 
 class Client(TimeUUIDModel):
@@ -26,6 +29,7 @@ class Client(TimeUUIDModel):
 
     def __str__(self):
         return self.name
+
 
 class ClientMembership(TimeUUIDModel):
     class Role(models.TextChoices):
@@ -51,9 +55,9 @@ class ClientMembership(TimeUUIDModel):
 
 class BrokerAccount(TimeUUIDModel):
     class Kind(models.TextChoices):
-            LIVE = "IBKR", "IBKR Live"
-            PAPER_LINKED = "IBKR-PAPER", "IBKR Paper (via IBKR)"
-            SIMULATED = "SIM", "Simulated (local)"
+        LIVE = "IBKR", "IBKR Live"
+        PAPER_LINKED = "IBKR-PAPER", "IBKR Paper (via IBKR)"
+        SIMULATED = "SIM", "Simulated (local)"
 
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="broker_accounts")
     kind = models.CharField(max_length=16, choices=Kind.choices, default=Kind.LIVE)
@@ -94,7 +98,6 @@ class AccountSnapshot(TimeUUIDModel):
     used_margin = models.DecimalField(max_digits=20, decimal_places=6, default=Decimal("0"))
     extras = JSONField(default=dict, blank=True)  # any broker-specific fields
 
-
     class Meta:
         indexes = [
             models.Index(fields=['client', 'broker_account', 'asof_ts']),
@@ -105,8 +108,5 @@ class AccountSnapshot(TimeUUIDModel):
             models.UniqueConstraint(fields=['broker_account', 'asof_ts'], name='uniq_broker_asof')
         ]
 
-
     def __str__(self):
         return f"{self.broker_account.account_code} @ {self.asof_ts:%Y-%m-%d %H:%M:%S}"
-
-

@@ -8,14 +8,15 @@ if [ -f "$APP_DIR/.optionsTrader_env" ]; then
   . "$APP_DIR/.optionsTrader_env"
 fi
 
-RUN="$APP_DIR/scripts/sync_both.sh"
-NOTIFY="$APP_DIR/scripts/notify_email.py"
+RUN="$APP_DIR/backend/scripts/sync_both.sh"
+NOTIFY="$APP_DIR/backend/scripts/notify_email.py"
 PY="$APP_DIR/venv/bin/python"
 
 WHEN="${1:-manual}"         # scheduled-morning | scheduled-evening | manual
 TARGET="${2:-both}"         # live | paper | both
 
-LOG_DIR="$APP_DIR/logs"; mkdir -p "$LOG_DIR"
+#LOG_DIR="$APP_DIR/logs"; mkdir -p "$LOG_DIR"
+LOG_DIR="$HOME/logs"; mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/mirror_$(date +%Y%m%d_%H%M%S)_${TARGET}.log"
 
 LIVE_HOST=127.0.0.1; LIVE_PORT=4001; LIVE_LABEL="LIVE GW (4001)"

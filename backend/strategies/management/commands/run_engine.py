@@ -6,9 +6,7 @@ import uuid
 
 from accounts.models import AccountSnapshot
 from portfolio.models import Position
-from strategies.models import (
-    StrategyInstance, StrategyRun, Signal, Opportunity, Recommendation
-)
+from strategies.models import (StrategyInstance, StrategyRun, Signal, Opportunity, Recommendation)
 
 # The command is advice-only: it writes Recommendation rows, nothing else.
 # It’s conservative: it requires a profit-capture signal (≥ threshold) to trigger a close+roll plan.

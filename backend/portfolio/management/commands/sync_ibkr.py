@@ -10,9 +10,7 @@ from django.db import transaction
 from ib_insync import IB, util, Contract, Stock, Option  # pip install ib-insync
 
 from accounts.models import Client, BrokerAccount, AccountSnapshot
-from portfolio.models import (
-    Portfolio, Instrument, IbkrContract, Position, Order, Execution
-)
+from portfolio.models import (Portfolio, Instrument, IbkrContract, Position, Order, Execution)
 
 
 def decimal_safe(x) -> Decimal:
