@@ -19,12 +19,23 @@ from django.urls import path, include
 from strategies.views import recommendations_today
 from ops.views import health  # if you already added health
 from rest_framework.routers import DefaultRouter
-from .views import AccountsView, PositionsViewSet, OrdersViewSet, ChainSliceView
+from api.views import AccountsView, PositionsViewSet, OrdersViewSet, ChainSliceView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
+
+router = DefaultRouter()
+router.register(r"positions", PositionsViewSet, basename="positions")
+router.register(r"orders", OrdersViewSet, basename="orders")
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/health/', health, name='health'),
     path('api/recommendations/today/', recommendations_today, name='recs_today'),
+    path("api/accounts/me/", AccountsView.as_view()),
+    path("api/chain/<str:symbol>", ChainSliceView.as_view()),
+    path("api/", include(router.urls)),
+    path("api/auth/token/", TokenObtainPairView.as_view()),
+    path("api/auth/refresh/", TokenRefreshView.as_view()),
 ]
 

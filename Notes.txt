@@ -51,6 +51,50 @@ set -euo pipefail
 
 
 
+########    UI   ###########
+# Your Node is too old. create-vite@8 requires Node ≥ 20.19 or ≥ 22.12, but you’re on Node 16.2.0.
+# That’s why you see the stripVTControlCharacters error (that export doesn’t exist in Node 16).
+
+nvm install 22
+nvm use 22
+nvm alias default 22
+
+# verify
+node -v   # should be v22.x
+npm -v    # then optionally update npm:
+npm i -g npm@latest
+
+(venv) dmitry_v@Dmitrys-MacBook-Pro optionsTrader % npm -v
+10.9.4
+(venv) dmitry_v@Dmitrys-MacBook-Pro optionsTrader % npm i -g npm@latest
+
+removed 27 packages, and changed 77 packages in 3s
+
+28 packages are looking for funding
+  run `npm fund` for details
+(venv) dmitry_v@Dmitrys-MacBook-Pro optionsTrader % npm -v
+11.6.2
+
+VITE v7.1.11  ready in 676 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+  ➜  press h + enter to show help
+
+cd ui  # Important to be in right directory !!!
+npm run dev	Start local dev server (hot reload).
+npm run build	Create production build in /dist.
+npm run preview	Preview that production build locally (on port 4173).
+
+***  Node   ***
+node -v            # you'll see v16.2.0 right now
+nvm use 22         # or: nvm use   # (reads .nvmrc = 22.21.0)
+node -v            # should now be v22.21.0
+npm -v             # should be 11.x
+
+
+
+
 
 
 

@@ -1,0 +1,40 @@
+# see .gitignore below
+
+# --- Python / Django -------------------------------------
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.log
+*.pot
+*.pyc
+db.sqlite3
+venv/
+.env
+.env.local
+.env.*
+.DS_Store
+
+# --- Django builds / static -------------------------------
+staticfiles/
+media/
+*.bak
+*.swp
+
+# --- Frontend / Vite / Node -------------------------------
+ui/node_modules/
+ui/dist/
+ui/.vite/
+ui/.eslintcache
+ui/.tsbuildinfo
+
+# --- IDE / OS ---------------------------------------------
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+
+# --- Misc -------------------------------------------------
+logs/
+*.pid
+*.seed
+*.lock
