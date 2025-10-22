@@ -15,9 +15,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from strategies.views import recommendations_today
 from ops.views import health  # if you already added health
+from rest_framework.routers import DefaultRouter
+from .views import AccountsView, PositionsViewSet, OrdersViewSet, ChainSliceView
 
 
 urlpatterns = [

@@ -6,6 +6,7 @@ from typing import Dict, Tuple
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from django.db import transaction
+import time
 
 from ib_insync import IB, util, Contract, Stock, Option  # pip install ib-insync
 
@@ -119,10 +120,35 @@ class Command(BaseCommand):
         # 1) Connect to TWS/Gateway
         ib = IB()
         self.stdout.write(self.style.NOTICE(f"Connecting to IBKR at {host}:{port} clientId={clientId}..."))
-        try:
-            ib.connect(host, port, clientId=clientId, timeout=opts["timeout"], readonly=opts["readonly"])
-        except Exception as e:
-            raise CommandError(f"Failed to connect to IBKR: {e}")
+        retries = 6
+        connected = False
+
+        for i in range(retries):
+            try:
+                ib.connect(host, port, clientId=clientId, timeout=opts["timeout"], readonly=opts["readonly"])
+                accts = ib.managedAccounts()
+                if accts:
+                    connected = True
+                    break
+                else:
+                    self.stdout.write(self.style.WARNING("Connected but managedAccounts() empty; retrying..."))
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f"Connect attempt {i + 1}/{retries} failed: {e}"))
+            finally:
+                if not connected:
+                    try:
+                        ib.disconnect()
+                    except Exception:
+                        pass
+            time.sleep(5)
+
+        if not connected:
+            raise CommandError(f"Failed to connect to IBKR after {retries} attempts (host={host} port={port}).")
+
+        # try:
+        #     ib.connect(host, port, clientId=clientId, timeout=opts["timeout"], readonly=opts["readonly"])
+        # except Exception as e:
+        #     raise CommandError(f"Failed to connect to IBKR: {e}")
 
         # Managed accounts (strings like 'U1234567','DUxxxxxxx')
         managed = set(ib.managedAccounts())
