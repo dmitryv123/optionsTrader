@@ -145,9 +145,21 @@ class Recommendation(TimeUUIDModel):
     portfolio = models.ForeignKey(Portfolio, on_delete=models.CASCADE, related_name="recommendations")
     broker_account = models.ForeignKey(BrokerAccount, on_delete=models.CASCADE, related_name="recommendations")
 
-    strategy_instance = models.ForeignKey(StrategyInstance, on_delete=models.PROTECT, related_name="recommendations", default=Decimal("0"))
+    #strategy_instance = models.ForeignKey(StrategyInstance, on_delete=models.PROTECT, related_name="recommendations", default=Decimal("0"))
+    strategy_instance = models.ForeignKey(
+        StrategyInstance,
+        on_delete=models.PROTECT,
+        related_name="recommendations",
+    )
     # denormalize the version actually used at emission time (audit/reproducibility)
-    strategy_version = models.ForeignKey(StrategyVersion, on_delete=models.PROTECT, related_name="recommendations", default=" ")
+    # strategy_version = models.ForeignKey(StrategyVersion, on_delete=models.PROTECT, related_name="recommendations", default=" ")
+    strategy_version = models.ForeignKey(
+        StrategyVersion,
+        on_delete=models.PROTECT,
+        related_name="recommendations",
+        null=True,
+        blank=True,
+    )
 
     asof_ts = models.DateTimeField()
     underlier = models.ForeignKey(Instrument, on_delete=models.PROTECT, related_name="recommendations_underlier")

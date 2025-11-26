@@ -42,8 +42,11 @@ class Instrument(TimeUUIDModel):
             models.Index(fields=["symbol", "asset_type"]),
         ]
 
+    # def __str__(self):
+    #     return f"{self.symbol} ({self.asset_type})"
+
     def __str__(self):
-        return f"{self.symbol} ({self.asset_type})"
+        return f"{self.symbol} [{self.get_asset_type_display()}]"
 
 
 class IbkrContract(TimeUUIDModel):
@@ -122,6 +125,14 @@ class Position(TimeUUIDModel):
             models.Index(fields=["client", "portfolio", "instrument"]),
             models.Index(fields=["client", "asof_ts"]),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['broker_account', 'instrument', 'asof_ts'],
+                name='uniq_position_ba_instr_asof'
+            ),
+        ]
+        get_latest_by = "asof_ts"
+        ordering = ["-asof_ts"]
 
 
 class Order(TimeUUIDModel):
@@ -150,6 +161,9 @@ class Order(TimeUUIDModel):
             models.Index(fields=["client", "created_ts"]),
         ]
 
+    def __str__(self):
+        return f"{self.broker_account.account_code} #{self.ibkr_order_id} {self.side} {self.ibkr_con or ''} [{self.status}]"
+
 
 class Execution(TimeUUIDModel):
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="executions")
@@ -167,6 +181,9 @@ class Execution(TimeUUIDModel):
         indexes = [
             models.Index(fields=["client", "fill_ts"]),
         ]
+
+    def __str__(self):
+        return f"Exec {self.ibkr_exec_id} {self.qty}@{self.price}"
 
 
 class OptionEvent(TimeUUIDModel):

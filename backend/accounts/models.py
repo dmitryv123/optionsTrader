@@ -74,7 +74,7 @@ class BrokerAccount(TimeUUIDModel):
         ]
 
     def __str__(self):
-        return f"{self.account_code} ({self.broker})"
+        return f"{self.account_code} ({self.kind})"
 
 
 # class BrokerAccount(TimeUUIDModel):
@@ -107,6 +107,8 @@ class AccountSnapshot(TimeUUIDModel):
         constraints = [
             models.UniqueConstraint(fields=['broker_account', 'asof_ts'], name='uniq_broker_asof')
         ]
+        get_latest_by = "asof_ts"
+        ordering = ["-asof_ts"]
 
     def __str__(self):
         return f"{self.broker_account.account_code} @ {self.asof_ts:%Y-%m-%d %H:%M:%S}"
