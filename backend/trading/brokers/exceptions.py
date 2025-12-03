@@ -29,3 +29,23 @@ class BrokerConnectionError(BrokerError):
     to the underlying broker API.
     """
     pass
+
+class BrokerDataMappingError(BrokerError):
+    """
+    Raised when a raw broker payload cannot be mapped into one of the
+    normalized dataclasses (OrderData, ExecutionData, OptionEventData, etc.).
+
+    This usually indicates a schema change, missing fields, or unexpected
+    types that should be investigated and fixed in the mapper layer.
+    """
+    pass
+
+
+class BrokerRateLimitError(BrokerError):
+    """
+    Raised when the broker API indicates rate limiting or throttling.
+
+    Higher-level code can catch this error and apply backoff, retry, or
+    scheduling adjustments to avoid hammering the broker endpoints.
+    """
+    pass

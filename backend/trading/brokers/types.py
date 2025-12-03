@@ -62,3 +62,74 @@ class PositionData:
 
     asof_ts: datetime                # Timestamp when broker reported the data
     raw: Dict[str, Any]              # Raw broker payload for audit/debugging
+
+@dataclass
+class OrderData:
+    """
+    Normalized representation of a single broker order.
+
+    This is broker-agnostic and maps 1:1 into the Order model via ingestion.
+    """
+    broker_account_code: str  # e.g. "U1234567"
+    symbol: str               # underlier symbol, e.g. "AAPL"
+    con_id: Optional[int]     # IBKR contract id, if available
+
+    ibkr_order_id: int
+    parent_ibkr_order_id: Optional[int]
+
+    side: str                 # "BUY" / "SELL"
+    order_type: str           # "LMT", "MKT", etc.
+    limit_price: Optional[Decimal]
+    aux_price: Optional[Decimal]  # e.g. stop price
+    tif: str                  # "DAY", "GTC", etc.
+    status: str               # "Submitted", "Filled", "Cancelled", ...
+
+    created_ts: datetime
+    updated_ts: datetime
+
+    raw: Dict[str, Any]       # full broker payload for audit/debug
+
+
+@dataclass
+class ExecutionData:
+    """
+    Normalized representation of a single execution (fill).
+
+    This aligns with the Execution model and links back to an order
+    via ibkr_order_id when available.
+    """
+    broker_account_code: str
+    symbol: str
+    con_id: Optional[int]
+
+    ibkr_exec_id: str         # unique per fill at the broker level
+    ibkr_order_id: Optional[int]
+
+    fill_ts: datetime
+    qty: Decimal
+    price: Decimal
+    fee: Decimal
+    venue: str                # exchange/venue, if provided
+
+    raw: Dict[str, Any]
+
+
+@dataclass
+class OptionEventData:
+    """
+    Normalized representation of an option lifecycle event:
+
+    - assignment
+    - exercise
+    - expiration
+    """
+    broker_account_code: str
+    symbol: str
+    con_id: Optional[int]
+
+    event_type: str           # "assignment", "exercise", "expiration"
+    event_ts: datetime
+    qty: Decimal
+    notes: str
+
+    raw: Dict[str, Any]
