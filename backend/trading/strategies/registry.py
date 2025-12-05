@@ -37,8 +37,10 @@ def _load_object_from_code_ref(code_ref: str) -> Any:
         )
 
     module_path, obj_name = code_ref.split(":", 1)
+    # print ("module_path",module_path)
     try:
         module = importlib.import_module(module_path)
+        # print ("module",module)
     except ImportError as exc:
         raise ImproperlyConfigured(
             f"Cannot import module '{module_path}' for strategy '{code_ref}': {exc}"
@@ -46,6 +48,7 @@ def _load_object_from_code_ref(code_ref: str) -> Any:
 
     try:
         obj = getattr(module, obj_name)
+        # print ("obj",obj,"module",module,"obj_name",obj_name)
     except AttributeError as exc:
         raise ImproperlyConfigured(
             f"Object '{obj_name}' not found in module '{module_path}' "

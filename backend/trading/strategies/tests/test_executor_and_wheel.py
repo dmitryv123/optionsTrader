@@ -150,6 +150,7 @@ class StrategyExecutorAndWheelTests(TestCase):
         # We expect our stub WheelStrategy to return exactly one diagnostic action
         self.assertEqual(len(actions), 1)
         act = actions[0]
+        # print('act',act)
 
         self.assertEqual(act.action, "diagnostic")
         self.assertEqual(act.rationale, "WheelStrategy v1 diagnostic only (no live trades).")

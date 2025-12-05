@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from django.utils import timezone
 
@@ -33,13 +33,17 @@ class StrategyContext:
     used_margin: Decimal
 
     # Positions, orders, executions (already filtered for this portfolio/account)
-    positions: List[Position] = field(default_factory=list)
-    open_orders: List[Order] = field(default_factory=list)
-    recent_executions: List[Execution] = field(default_factory=list)
+    positions: List[Position] #= field(default_factory=list)
+    open_orders: List[Order] # = field(default_factory=list)
+    recent_executions: List[Execution] # = field(default_factory=list)
 
     # Strategy-specific:
-    config: Dict[str, Any] = field(default_factory=dict)
-    extras: Dict[str, Any] = field(default_factory=dict)
+    config: Dict[str, Any] # = field(default_fact ory=dict)
+    extras: Dict[str, Any] # = field(default_factory=dict)
+
+
+if TYPE_CHECKING:
+    from portfolio.models import IbkrContract
 
 
 @dataclass
@@ -55,6 +59,9 @@ class PlannedAction:
     underlier: Optional[Instrument]
     action: str  # e.g. "sell_put", "buy_to_close", "roll", "open_collar"
     params: Dict[str, Any] = field(default_factory=dict)
+
+    # NEW: optional IBKR contract
+    ibkr_con: Optional["IbkrContract"] = None
 
     confidence: Decimal = Decimal("0")
     rationale: str = ""
@@ -85,6 +92,19 @@ class BaseStrategy:
     def name(self) -> str:
         return self.instance.name
 
+    def evaluate(self, context: StrategyContext) -> Dict[str, Any]:
+        """
+        Return a dict with optional keys:
+          - signals: list[..]
+          - opportunities: list[..]
+          - recommendations: list[..]
+          - actions: list[..]  (simplified, engine-specific)
+        Subclasses should override this.
+
+        T0053.1 uses this for WheelStrategy.
+        """
+        raise NotImplementedError
+
     def run(self, context: StrategyContext) -> List[PlannedAction]:
         """
         Main entrypoint for decision making.
@@ -92,4 +112,12 @@ class BaseStrategy:
         Subclasses MUST override this and return a list of PlannedAction
         objects. The base implementation does nothing.
         """
-        return []
+        """
+                Backwards-compatible wrapper that delegates to evaluate() and returns
+                the 'actions' key (if present). This lets older call sites keep using
+                .run(context) while new ones can use the full dict.
+                """
+        result = self.evaluate(context)
+        return result.get("actions", [])
+
+        # return []

@@ -87,6 +87,11 @@ class StrategyRun(TimeUUIDModel):
     stats = JSONField(default=dict, blank=True)
     errors = JSONField(default=dict, blank=True)
 
+    # NEW for Story 4.5a (Observability & Inspection:
+    debug_log = JSONField(default=list, blank=True)      # structured breadcrumbs
+    duration_ms = models.IntegerField(null=True, blank=True)
+    error_trace = models.TextField(blank=True, default="")
+
     class Meta:
         indexes = [
             models.Index(fields=["strategy_instance", "run_ts"]),
@@ -162,7 +167,11 @@ class Recommendation(TimeUUIDModel):
     )
 
     asof_ts = models.DateTimeField()
-    underlier = models.ForeignKey(Instrument, on_delete=models.PROTECT, related_name="recommendations_underlier")
+    underlier = models.ForeignKey(Instrument, on_delete=models.PROTECT,
+                                  related_name="recommendations_underlier",
+                                  null=True,
+                                  blank=True,
+                                  )
     ibkr_con = models.ForeignKey(IbkrContract, on_delete=models.SET_NULL, null=True, blank=True,
                                  related_name="recommendations_contract")
 

@@ -14,3 +14,5 @@ pip install -U pip
 pip install django djangorestframework django-environ psycopg2-binary ib-insync pydantic
 python manage.py migrate
 python manage.py runserver
+
+See the full documentation in the [docs folder](./docs/README.md).

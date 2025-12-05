@@ -59,7 +59,7 @@ class AccountSnapshotFactory(DjangoModelFactory):
     asof_ts = factory.LazyFunction(timezone.now)
     currency = "USD"
 
-    cash = "100000.000000"
+    cash = "100000.00"
     buying_power = "200000.000000"
     maintenance_margin = "50000.000000"
     used_margin = "40000.000000"
